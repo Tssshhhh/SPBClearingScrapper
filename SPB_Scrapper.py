@@ -76,10 +76,12 @@ def get_table_from_site(start_time, browser: webdriver.Firefox):
                         table = wait.until(
                             EC.visibility_of_element_located((By.XPATH, "/html/body/form/div[3]/div/div/div/div[3]/table"))).\
                             get_attribute("outerHTML")
+                        next_page = browser.find_element("xpath", f"//a[contains(@href,'{link}')]")
+                        if not next_page.isdigit() and next_page != "...":  # TODO need test
+                            break
+                        selen_logs.info(f'PAGE {next_page.text}')
                         table_list.append(table)
                         table_logs.info(table)
-                        next_page = browser.find_element("xpath", f"//a[contains(@href,'{link}')]")
-                        selen_logs.info(f'PAGE {next_page.text}')
                         next_page.click()
                         counter += 1
             except (NoSuchElementException, StaleElementReferenceException):
