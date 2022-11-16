@@ -8,7 +8,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 
 import logging
-import time
 import pandas as pd
 from datetime import datetime
 
@@ -60,7 +59,7 @@ def get_hrefs_from_span(span_elem: selenium.webdriver.remote.webelement.WebEleme
     return href_end
 
 
-def get_table_from_site(browser: webdriver.Firefox):
+def get_table_from_site(start_time, browser: webdriver.Firefox):
     ctl_list = ["$ctl01'", "$ctl02'", "$ctl03'", "$ctl04'", "$ctl05'", "$ctl05'", "$ctl06'"]
     table_list = []
     browser.implicitly_wait(5)
@@ -87,17 +86,16 @@ def get_table_from_site(browser: webdriver.Firefox):
                 warning_logs.warning(f"WARN: DIDN'T GOT {counter+1} PAGE.")
                 continue
             break
-
-    with open('table_list.txt', 'w+', errors='ignore') as f:
+    with open(f'table_list{start_time}.txt', 'w+', errors='ignore') as f:
         f.write('\n'.join(table_list))
     browser.close()
     browser.quit()
 
 
-def df_to_excel():
+def df_to_excel(start_time):
     with open('table_list.txt', 'r') as l:
         tables = l.read()
-    df_list = pd.read_html(tables)
+    df_list = pd.read_html(tables, decimal=',', thousands='.')
     df_export = pd.DataFrame(columns=['Код ценной бумаги', 'Наименование', 'ISIN', 'Минимальное базовое ГО, %',
                                       'Минимальное базовое ГО в дни ожидаемой повышенной волатильности, %',
                                       'MR_stress, %', 'ch_fine_short, %', 'ch_fine_long, %', 'fine_short, %',
@@ -106,7 +104,7 @@ def df_to_excel():
     for df in df_list:
         df_export = pd.concat([df_export, df])
     df_export = df_export.drop_duplicates()
-    df_export.to_excel('SPB_Risk_Params.xlsx', index=None)
+    df_export.to_excel(f'SPB_Risk_Params{start_time}.xlsx', index=None)
 
 
 if __name__ == "__main__":
@@ -114,6 +112,6 @@ if __name__ == "__main__":
     URL = 'https://spbclearing.ru/ru/risk_managemen/riskpar/rcenbum/values1/'
     browser = start_wd()
     prepare_site(browser, url=URL)
-    get_table_from_site(browser=browser)
+    get_table_from_site(start_time, browser=browser)
     selen_logs.info(f'SCRIPT WORKED FOR {str(start_time - datetime.now())}')
-    df_to_excel()
+    df_to_excel(start_time)
