@@ -1,3 +1,5 @@
+import os.path
+
 import selenium.webdriver.remote.webelement
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -77,7 +79,10 @@ def get_table_from_site(start_time, browser: webdriver.Firefox):
                             EC.visibility_of_element_located((By.XPATH, "/html/body/form/div[3]/div/div/div/div[3]/table"))).\
                             get_attribute("outerHTML")
                         next_page = browser.find_element("xpath", f"//a[contains(@href,'{link}')]")
-                        if not next_page.isdigit() and next_page != "...":  # TODO need test
+                        if next_page.text.isdigit() or next_page.text == "...":
+                            pass
+                        else:
+                            warning_logs.warning(f'bug? {next_page.text}')
                             break
                         selen_logs.info(f'PAGE {next_page.text}')
                         table_list.append(table)
@@ -88,15 +93,19 @@ def get_table_from_site(start_time, browser: webdriver.Firefox):
                 warning_logs.warning(f"WARN: DIDN'T GOT {counter+1} PAGE.")
                 continue
             break
-    with open(f'table_list{start_time}.txt', 'w+', errors='ignore') as f:
+    with open(f'table_list{start_time.strftime("%m-%d-%M")}', 'w+', errors='ignore') as f:
         f.write('\n'.join(table_list))
     browser.close()
     browser.quit()
 
 
 def df_to_excel(start_time):
-    with open('table_list.txt', 'r') as l:
-        tables = l.read()
+    if os.path.exists('table_list.txt'):
+        with open('table_list.txt', 'r') as l:
+            tables = l.read()
+    else:
+        with open('logs/table_logs.log', 'r') as l:
+            tables = l.read()
     df_list = pd.read_html(tables, decimal=',', thousands='.')
     df_export = pd.DataFrame(columns=['Код ценной бумаги', 'Наименование', 'ISIN', 'Минимальное базовое ГО, %',
                                       'Минимальное базовое ГО в дни ожидаемой повышенной волатильности, %',
@@ -106,14 +115,14 @@ def df_to_excel(start_time):
     for df in df_list:
         df_export = pd.concat([df_export, df])
     df_export = df_export.drop_duplicates()
-    df_export.to_excel(f'SPB_Risk_Params{start_time}.xlsx', index=None)
+    df_export.to_excel(f'SPB_Risk_Params{start_time.strftime("%m-%d-%M")}.xlsx', index=None)
 
 
 if __name__ == "__main__":
     start_time = datetime.now()
-    URL = 'https://spbclearing.ru/ru/risk_managemen/riskpar/rcenbum/values1/'
-    browser = start_wd()
-    prepare_site(browser, url=URL)
-    get_table_from_site(start_time, browser=browser)
-    selen_logs.info(f'SCRIPT WORKED FOR {str(start_time - datetime.now())}')
+    # URL = 'https://spbclearing.ru/ru/risk_managemen/riskpar/rcenbum/values1/'
+    # browser = start_wd()
+    # prepare_site(browser, url=URL)
+    # get_table_from_site(start_time, browser=browser)
+    # selen_logs.info(f'SCRIPT WORKED FOR {str(start_time - datetime.now())}')
     df_to_excel(start_time)
